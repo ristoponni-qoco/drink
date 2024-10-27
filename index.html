@@ -11,6 +11,31 @@
             margin: 0 auto;
             padding: 20px;
             color: #333;
+            background-image: url('bg.jpg');
+            background-size: cover;
+        }
+        body::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+            rgba(255, 255, 255, 0.3),
+            rgba(255, 255, 255, 0.3)
+        ); /* Semi-transparent black overlay */
+        z-index: 1;
+        }
+
+        body > * {
+        position: relative;
+        z-index: 2;
+        }
+        .container {
+            background-color: rgba(242, 242, 242, 0.8);
+            padding: 20px;
+            border-radius: 5px;
         }
         .progress-container {
             width: 100%;
@@ -91,7 +116,7 @@
             text-align: left;
         }
         th {
-            background-color: #f2f2f2;
+            background-color: #e6e6e6;
         }
         .delete-btn {
             background-color: #dc3545;
@@ -116,39 +141,41 @@
     </style>
 </head>
 <body>
-    <div class="progress-container">
-        <div class="progress-bar" id="progressBar"></div>
-        <span class="progress-text" id="progressText"></span>
-        <span class="progress-limit" id="progressLimit">6</span>
-    </div>
-    <div class="remaining-drinks" id="remainingDrinks"></div>
-    <div class="input-section">
-        <div class="input-group">
-            <span>Drinks:</span>
-            <button onclick="adjustDrinks(-1)">-</button>
-            <input disabled type="text" id="drinkCount" value="1" min="1" max="10">
-            <button onclick="adjustDrinks(1)">+</button>
+    <div class="container">
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+            <span class="progress-text" id="progressText"></span>
+            <span class="progress-limit" id="progressLimit">6</span>
         </div>
-        <div class="input-group">
-            <span>Minutes ago:</span>
-            <button onclick="adjustMinutes(-1)">-</button>
-            <input disabled type="text" id="minutesAgo" value="0" min="0" max="180">
-            <button onclick="adjustMinutes(1)">+</button>
+        <div class="remaining-drinks" id="remainingDrinks"></div>
+        <div class="input-section">
+            <div class="input-group">
+                <span>Drinks:</span>
+                <button onclick="adjustDrinks(-1)">-</button>
+                <input disabled type="text" id="drinkCount" value="1" min="1" max="10">
+                <button onclick="adjustDrinks(1)">+</button>
+            </div>
+            <div class="input-group">
+                <span>Minutes ago:</span>
+                <button onclick="adjustMinutes(-1)">-</button>
+                <input disabled type="text" id="minutesAgo" value="0" min="0" max="180">
+                <button onclick="adjustMinutes(1)">+</button>
+            </div>
+            <button onclick="addDrinks()">Add</button>
         </div>
-        <button onclick="addDrinks()">Add</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Ago</th>
+                    <th>Drinks</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="drinkTable"></tbody>
+        </table>
+        <button id="clearAll" onclick="clearAll()">Clear All</button>
     </div>
-    <table>
-        <thead>
-            <tr>
-                <th>Timestamp</th>
-                <th>Ago</th>
-                <th>Drinks</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody id="drinkTable"></tbody>
-    </table>
-    <button id="clearAll" onclick="clearAll()">Clear All</button>
 
     <script>
         let drinkLimit = 6;
