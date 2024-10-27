@@ -375,11 +375,14 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            const lastEditTimestamp = localStorage.getItem('lastLimitEditTimestamp');
-            const threeDaysInMs = 3 * 24 * 60 * 60 * 1000;
-            if (!lastEditTimestamp || Date.now() - parseInt(lastEditTimestamp) > threeDaysInMs) {
-                promptForNewLimit();
-            }
+            loadData();
+            setTimeout(() => {
+                const lastEditTimestamp = localStorage.getItem('lastLimitEditTimestamp');
+                const threeDaysInMs = 3 * 24 * 60 * 60 * 1000;
+                if (!lastEditTimestamp || Date.now() - parseInt(lastEditTimestamp) > threeDaysInMs) {
+                    promptForNewLimit();
+                }
+            }, 0);
         });
 
         document.getElementById('progressLimit').addEventListener('click', function() {
@@ -391,8 +394,6 @@
         setInterval(() => {
             updateDrinkTable();
         }, 60000);
-
-        loadData();
     </script>
 </body>
 </html>
