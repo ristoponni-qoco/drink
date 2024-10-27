@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drink Counter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        .progress-container {
+            width: 100%;
+            background-color: #a0a0a0;
+            color: white;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            position: relative;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .progress-text {
+            margin-left: 10px;
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .progress-bar {
+            height: 30px;
+            border-radius: 5px;
+            transition: width 0.5s ease-in-out;
+            display: flex;
+            align-items: center;
+            padding-left: 10px;
+            color: white;
+            font-weight: bold;
+        }
+        .progress-limit {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: white;
+        }
+        .remaining-drinks {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .input-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            display: flex;
+            align-items: center;
+            font-size: 0.8em;
+        }
+        .input-group input {
+            width: 30px;
+            text-align: center;
+            margin: 0 5px;
+            appearance: none;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 0.8em;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8em;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .delete-btn {
+            background-color: #dc3545;
+        }
+        .delete-btn:hover {
+            background-color: #c82333;
+        }
+        #clearAll {
+            background-color: #dc3545;
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            font-size: 0.8em;
+        }
+        #clearAll:hover {
+            background-color: #c82333;
+        }
+        @keyframes blink-red {
+                     0%, 100% { background-color: transparent; border-color: transparent; }
+                     50% { background-color: #fc5565; border-color: #fc5565; }
+                }
+    </style>
+</head>
+<body>
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+        <span class="progress-text" id="progressText"></span>
+        <span class="progress-limit" id="progressLimit">6</span>
+    </div>
+    <div class="remaining-drinks" id="remainingDrinks"></div>
+    <div class="input-section">
+        <div class="input-group">
+            <span>Drinks:</span>
+            <button onclick="adjustDrinks(-1)">-</button>
+            <input disabled type="text" id="drinkCount" value="1" min="1" max="10">
+            <button onclick="adjustDrinks(1)">+</button>
+        </div>
+        <div class="input-group">
+            <span>Minutes ago:</span>
+            <button onclick="adjustMinutes(-1)">-</button>
+            <input disabled type="text" id="minutesAgo" value="0" min="0" max="180">
+            <button onclick="adjustMinutes(1)">+</button>
+        </div>
+        <button onclick="addDrinks()">Add</button>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Ago</th>
+                <th>Drinks</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="drinkTable"></tbody>
+    </table>
+    <button id="clearAll" onclick="clearAll()">Clear All</button>
+
+    <script>
+        let drinkLimit = 6;
+        let drinks = [];
+
+        function loadData() {
+            const savedLimit = localStorage.getItem('drinkLimit');
+            const savedDrinks = localStorage.getItem('drinks');
+            
+            if (savedLimit) {
+                drinkLimit = parseInt(savedLimit);
+            } else {
+                drinkLimit = 6;
+            }
+            
+            document.getElementById('progressLimit').textContent = drinkLimit;
+
+            if (savedDrinks) {
+                drinks = JSON.parse(savedDrinks);
+            } else {
+                drinks = [];
+            }
+            if (savedDrinks) {
+                drinks = JSON.parse(savedDrinks);
+            }
+            
+            updateUI();
+        }
+
+        function saveData() {
+            localStorage.setItem('drinkLimit', drinkLimit);
+            localStorage.setItem('drinks', JSON.stringify(drinks));
+        }
+
+        function updateUI() {
+            updateProgressBar();
+            updateRemainingDrinks();
+            updateDrinkTable();
+        }
+
+        function updateProgressBar() {
+            const totalDrinks = drinks.reduce((sum, drink) => sum + drink.count, 0);
+            const percentage = (totalDrinks / drinkLimit) * 100;
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            
+            progressBar.style.width = `${Math.min(percentage, 100)}%`;
+
+            const transitionWidth = 20; // Width of the blending area in percentage points
+
+            if (percentage <= 50) {
+                // Gradient from green to yellow over the current percentage
+                progressBar.style.background = `#28a745`;
+            } else if (percentage <= 75) {
+                const greenEnd = (50 / percentage) * 100;
+                const yellowStart = greenEnd;
+                const yellowEnd = ((75 / percentage) * 100);
+                progressBar.style.background = `linear-gradient(to right,
+                    #28a745 0%,
+                    #28a745 ${greenEnd - transitionWidth}%,
+                    #ffc107 ${greenEnd + transitionWidth}%,
+                    #ffc107 ${yellowEnd - transitionWidth}%,
+                    #dc3545 ${yellowEnd + transitionWidth}%,
+                    #dc3545 100%)`;
+            } else if (percentage <= 100) {
+                const greenEnd = (50 / percentage) * 100;
+                const yellowEnd = (75 / percentage) * 100;
+                const redEnd = 100;
+                progressBar.style.background = `linear-gradient(to right,
+                    #28a745 0%,
+                    #28a745 ${greenEnd - transitionWidth}%,
+                    #ffc107 ${greenEnd + transitionWidth}%,
+                    #ffc107 ${yellowEnd - transitionWidth}%,
+                    #dc3545 ${yellowEnd + transitionWidth}%,
+                    #dc3545 ${redEnd - transitionWidth}%,
+                    #dc3545 ${redEnd}%,
+                    #dc3545 100%)`;
+            } else {
+                // Over 100%
+                const greenEnd = (50 / percentage) * 100;
+                const yellowEnd = (75 / percentage) * 100;
+                const redEnd = (100 / percentage) * 100;
+                progressBar.style.background = `linear-gradient(to right,
+                    #28a745 0%,
+                    #28a745 ${greenEnd - transitionWidth}%,
+                    #ffc107 ${greenEnd + transitionWidth}%,
+                    #ffc107 ${yellowEnd - transitionWidth}%,
+                    #dc3545 ${yellowEnd + transitionWidth}%,
+                    #dc3545 ${redEnd - transitionWidth}%,
+                    black ${redEnd + transitionWidth}%,
+                    black 100%)`;
+            }
+
+            
+            progressText.textContent = `${totalDrinks} / ${drinkLimit}`;
+        }
+
+        function updateRemainingDrinks() {
+            const totalDrinks = drinks.reduce((sum, drink) => sum + drink.count, 0);
+            const remaining = drinkLimit - totalDrinks;
+            const remainingElement = document.getElementById('remainingDrinks');
+            
+            if (remaining >= 0) {
+                remainingElement.textContent = `${remaining} drinks until limit`;
+                remainingElement.style.animation = '';
+                remainingElement.style.border = '';
+            } else {
+                const overconsumed = Math.abs(remaining);
+                remainingElement.textContent = `${overconsumed} drinks OVERCONSUMED`;
+                // Remove the animation
+                remainingElement.style.animation = 'none';
+
+                // Trigger a reflow to force the browser to recognize the change
+                void remainingElement.offsetWidth; // Or use remainingElement.offsetHeight
+
+                // Re-apply the animation
+                remainingElement.style.animation = 'blink-red 1s 1';
+                remainingElement.style.animation = 'blink-red 1s 1';
+                remainingElement.style.border = '3px solid transparent';
+            }
+        }
+
+        function updateDrinkTable() {
+            const table = document.getElementById('drinkTable');
+            table.innerHTML = '';
+            
+            drinks.sort((a, b) => b.timestamp - a.timestamp).forEach((drink, index) => {
+                const row = table.insertRow();
+                row.insertCell(0).textContent = formatTimestamp(drink.timestamp);
+                row.insertCell(1).textContent = getTimeAgo(drink.timestamp);
+                row.insertCell(2).textContent = drink.count;
+                const deleteCell = row.insertCell(3);
+                const deleteBtn = document.createElement('button');
+                deleteBtn.style.fontSize = '1em';
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.onclick = () => deleteDrink(index);
+                deleteCell.appendChild(deleteBtn);
+            });
+        }
+
+        function getTimeAgo(timestamp) {
+            const diff = Date.now() - timestamp;
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            return `${hours} h ${minutes} min`;
+        }
+
+        function adjustDrinks(change) {
+            const input = document.getElementById('drinkCount');
+            input.value = Math.max(1, Math.min(10, parseInt(input.value) + change));
+        }
+
+        function adjustMinutes(change) {
+            const input = document.getElementById('minutesAgo');
+            input.value = Math.max(0, Math.min(180, parseInt(input.value) + change));
+        }
+
+        function addDrinks() {
+            const count = parseInt(document.getElementById('drinkCount').value);
+            const minutesAgo = parseInt(document.getElementById('minutesAgo').value);
+            const timestamp = Date.now() - minutesAgo * 60 * 1000;
+            
+            drinks.push({ count, timestamp });
+            saveData();
+            updateUI();
+            
+            document.getElementById('drinkCount').value = 1;
+            document.getElementById('minutesAgo').value = 0;
+        }
+
+        function deleteDrink(index) {
+            if (confirm('Are you sure you want to delete this entry?')) {
+                drinks.splice(index, 1);
+                saveData();
+                updateUI();
+            }
+        }
+
+        function clearAll() {
+            if (confirm('Are you sure you want to clear all data?')) {
+                localStorage.clear();
+                drinkLimit = 6;
+                drinks = [];
+                document.getElementById('progressLimit').textContent = drinkLimit;
+                updateUI();
+            }
+        }
+
+        function promptForNewLimit() {
+            const newLimit = prompt('Enter new drink limit (1-30):', drinkLimit);
+            if (newLimit !== null) {
+                const limit = parseInt(newLimit);
+                if (limit >= 1 && limit <= 30) {
+                    drinkLimit = limit;
+                    document.getElementById('progressLimit').textContent = drinkLimit;
+                    localStorage.setItem('lastLimitEditTimestamp', Date.now());
+                    saveData();
+                    updateUI();
+                } else {
+                    alert('Please enter a number between 1 and 30.');
+                }
+            }
+        }
+
+        function formatTimestamp(timestamp) {
+            const date = new Date(parseInt(timestamp));
+            const now = new Date();
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            const timeString = `${hours}:${minutes}`;
+
+            if (date.toDateString() === now.toDateString()) {
+                return `Today at ${timeString}`;
+            } else if (date.toDateString() === yesterday.toDateString()) {
+                return `Yesterday at ${timeString}`;
+            } else {
+                const daysBefore = Math.floor((yesterday - date) / (24 * 60 * 60 * 1000));
+                return `${daysBefore} days before yesterday at ${timeString}`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const lastEditTimestamp = localStorage.getItem('lastLimitEditTimestamp');
+            const threeDaysInMs = 3 * 24 * 60 * 60 * 1000;
+            if (!lastEditTimestamp || Date.now() - parseInt(lastEditTimestamp) > threeDaysInMs) {
+                promptForNewLimit();
+            }
+        });
+
+        document.getElementById('progressLimit').addEventListener('click', function() {
+            if (confirm('Are you SURE you want to change your original limit?')) {
+                promptForNewLimit();
+            }
+        });
+
+        setInterval(() => {
+            updateDrinkTable();
+        }, 60000);
+
+        loadData();
+    </script>
+</body>
+</html>
+
