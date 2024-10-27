@@ -88,13 +88,14 @@
         }
         .input-group {
             display: flex;
+            flex-direction: column;
             align-items: center;
             font-size: 0.8em;
         }
         .input-group input {
             width: 30px;
             text-align: center;
-            margin: 0 5px;
+            margin: 5px 0;
             appearance: none;
         }
         button {
@@ -155,15 +156,15 @@
         <div class="input-section">
             <div class="input-group">
                 <span>Drinks:</span>
-                <button onclick="adjustDrinks(-1)">-</button>
-                <input disabled type="text" id="drinkCount" value="1" min="1" max="10">
                 <button onclick="adjustDrinks(1)">+</button>
+                <input disabled type="text" id="drinkCount" value="1" min="1" max="10">
+                <button onclick="adjustDrinks(-1)">-</button>
             </div>
             <div class="input-group">
                 <span>Minutes ago:</span>
-                <button onclick="adjustMinutes(-1)">-</button>
-                <input disabled type="text" id="minutesAgo" value="0" min="0" max="180">
                 <button onclick="adjustMinutes(1)">+</button>
+                <input disabled type="text" id="minutesAgo" value="0" min="0" max="180">
+                <button onclick="adjustMinutes(-1)">-</button>
             </div>
             <button onclick="addDrinks()">Add</button>
         </div>
