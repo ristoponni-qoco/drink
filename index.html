@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Drink Counter</title>
     <style>
+        html {
+            height: 100%;
+        }
         body {
             font-family: Arial, sans-serif;
             max-width: 800px;
@@ -12,7 +15,8 @@
             padding: 20px;
             color: #333;
             background-image: url('bg.jpg');
-            background-size: cover;
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
         }
         body::before {
         content: '';
