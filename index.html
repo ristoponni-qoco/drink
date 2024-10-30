@@ -144,6 +144,10 @@
                      0%, 100% { background-color: transparent; border-color: transparent; }
                      50% { background-color: #fc5565; border-color: #fc5565; }
                 }
+        .quick-warning {
+            color: red;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
@@ -153,7 +157,10 @@
             <span class="progress-text" id="progressText"></span>
             <span class="progress-limit" id="progressLimit">6</span>
         </div>
-        <div class="remaining-drinks" id="remainingDrinks"></div>
+        <div class="remaining-drinks" style="display: flex; justify-content: space-between;">
+            <span id="remainingDrinks"></span>
+            <span id="limitProjection"></span>
+        </div>
         <div class="input-section">
             <div class="input-group">
                 <span>Drinks:</span>
@@ -177,8 +184,8 @@
         <table>
             <thead>
                 <tr>
-                    <th>Timestamp</th>
-                    <th>Ago</th>
+                    <th>When</th>
+                    <th>Duration</th>
                     <th>Drinks</th>
                     <th>Action</th>
                 </tr>
@@ -288,7 +295,9 @@
             const totalDrinks = drinks.reduce((sum, drink) => sum + drink.count, 0);
             const remaining = drinkLimit - totalDrinks;
             const remainingElement = document.getElementById('remainingDrinks');
+            const projectionElement = document.getElementById('limitProjection');
             
+            // Set remaining drinks text
             if (remaining >= 0) {
                 remainingElement.textContent = `${remaining} drinks until limit`;
                 remainingElement.style.animation = '';
@@ -296,27 +305,93 @@
             } else {
                 const overconsumed = Math.abs(remaining);
                 remainingElement.textContent = `${overconsumed} drinks OVERCONSUMED`;
-                // Remove the animation
                 remainingElement.style.animation = 'none';
-
-                // Trigger a reflow to force the browser to recognize the change
-                void remainingElement.offsetWidth; // Or use remainingElement.offsetHeight
-
-                // Re-apply the animation
+                void remainingElement.offsetWidth;
                 remainingElement.style.animation = 'blink-red 1s 1';
                 remainingElement.style.animation = 'blink-red 1s 1';
                 remainingElement.style.border = '3px solid transparent';
             }
+
+            // Calculate projection
+            const sortedDrinks = drinks.sort((a, b) => b.timestamp - a.timestamp);
+            if (remaining > 0 && sortedDrinks.length > 1) {
+                // Project when limit will be reached
+                let totalDuration = 0;
+                for (let i = 0; i < sortedDrinks.length - 1; i++) {
+                    totalDuration += sortedDrinks[i].timestamp - sortedDrinks[i + 1].timestamp;
+                }
+                const avgDuration = totalDuration / (sortedDrinks.length - 1);
+                const projectedTime = new Date(Date.now() + (avgDuration * remaining));
+                const hours = projectedTime.getHours().toString().padStart(2, '0');
+                const minutes = projectedTime.getMinutes().toString().padStart(2, '0');
+                projectionElement.textContent = `Limit will be reached at ~${hours}:${minutes}`;
+            } else if (remaining <= 0) {
+                // Find when limit was reached
+                const chronologicalDrinks = [...drinks].sort((a, b) => a.timestamp - b.timestamp);
+                let runningTotal = 0;
+                let limitReachedTime;
+                for (let drink of chronologicalDrinks) {
+                    runningTotal += drink.count;
+                    if (runningTotal >= drinkLimit) {
+                        limitReachedTime = drink.timestamp;
+                        break;
+                    }
+                }
+                
+                const timeSinceLimit = Date.now() - limitReachedTime;
+                const hours = Math.floor(timeSinceLimit / (1000 * 60 * 60));
+                const minutes = Math.floor((timeSinceLimit % (1000 * 60 * 60)) / (1000 * 60));
+                projectionElement.textContent = `Limit reached ${hours}h ${minutes}m ago`;
+            }
+            else projectionElement.textContent = '';
         }
 
         function updateDrinkTable() {
             const table = document.getElementById('drinkTable');
             table.innerHTML = '';
             
-            drinks.sort((a, b) => b.timestamp - a.timestamp).forEach((drink, index) => {
+            const sortedDrinks = drinks.sort((a, b) => b.timestamp - a.timestamp);
+            
+            sortedDrinks.forEach((drink, index) => {
                 const row = table.insertRow();
                 row.insertCell(0).textContent = formatTimestamp(drink.timestamp);
-                row.insertCell(1).textContent = getTimeAgo(drink.timestamp);
+                
+                // Duration cell
+                const durationCell = row.insertCell(1);
+                if (index === 0) {
+                    durationCell.textContent = 'Ongoing';
+                } else {
+                    const duration = sortedDrinks[index - 1].timestamp - drink.timestamp;
+                    const durationText = formatDuration(duration);
+                    
+                    // Calculate average duration excluding the current drink
+                    let totalDuration = 0;
+                    let durationCount = 0;
+                    
+                    for (let i = 0; i < sortedDrinks.length - 1; i++) {
+                        if (i !== index - 1) { // Skip the current duration
+                            const otherDuration = sortedDrinks[i].timestamp - sortedDrinks[i + 1].timestamp;
+                            totalDuration += otherDuration;
+                            durationCount++;
+                        }
+                    }
+                    
+                    const averageDuration = durationCount > 0 ? totalDuration / durationCount : 0;
+                    
+                    if (averageDuration > 0) {
+                        const percentageQuicker = ((averageDuration - duration) / averageDuration) * 100;
+                        
+                        if (percentageQuicker >= 20) {
+                            const roundedPercentage = Math.round(percentageQuicker / 10) * 10;
+                            durationCell.innerHTML = `${durationText} <span class="quick-warning">${roundedPercentage}% quicker than average!</span>`;
+                        } else {
+                            durationCell.textContent = durationText;
+                        }
+                    } else {
+                        durationCell.textContent = durationText;
+                    }
+                }
+                
                 row.insertCell(2).textContent = drink.count;
                 const deleteCell = row.insertCell(3);
                 const deleteBtn = document.createElement('button');
@@ -326,13 +401,14 @@
                 deleteBtn.onclick = () => deleteDrink(index);
                 deleteCell.appendChild(deleteBtn);
             });
+
+            updateRemainingDrinks(); // to update the projection time
         }
 
-        function getTimeAgo(timestamp) {
-            const diff = Date.now() - timestamp;
-            const hours = Math.floor(diff / (1000 * 60 * 60));
-            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            return `${hours} h ${minutes} min`;
+        function formatDuration(ms) {
+            const hours = Math.floor(ms / (1000 * 60 * 60));
+            const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+            return `${hours}h ${minutes}m`;
         }
 
         function adjustDrinks(change) {
